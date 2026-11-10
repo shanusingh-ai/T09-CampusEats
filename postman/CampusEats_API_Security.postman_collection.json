@@ -1,0 +1,242 @@
+{
+  "info": {
+    "name": "CampusEats API Security - CS543",
+    "description": "Requests for login, authentication and role-based authorization tests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "customerToken",
+      "value": ""
+    },
+    {
+      "key": "restaurantToken",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Login as Customer",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"asha@campus.edu\",\"password\":\"customer123\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/login"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Login returns 200', () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "pm.collectionVariables.set('customerToken', data.token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Login as Restaurant",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"mealhub@campus.edu\",\"password\":\"resto123\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/login"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Login returns 200', () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "pm.collectionVariables.set('restaurantToken', data.token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. GET Items - No Token (expect 401)",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/items"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Missing token returns 401', () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. GET Items - Customer (expect 200)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/items"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Customer can read menu', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. POST Item - Customer (expect 403)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"Test Dish\",\"price\":50}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/items"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Customer cannot add dish', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. POST Item - Restaurant (expect 201)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{restaurantToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"Masala Dosa\",\"price\":80}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/items"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Restaurant can add dish', () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Login - Wrong Password (expect 401)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"asha@campus.edu\",\"password\":\"wrong-password\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/login"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Wrong password returns 401', () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CampusEats Catalogue</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="container">
+    <header>
+      <h1>CampusEats Catalogue</h1>
+      <p class="sub">The menu — served by a secured REST API (Node + Express + JWT)</p>
+    </header>
+
+    <section id="loginPanel" class="panel">
+      <h2>Login to CampusEats</h2>
+      <p class="hint">Sign in to view the menu. Restaurant users can also add dishes.</p>
+      <form id="loginForm">
+        <label for="email">Email</label>
+        <input id="email" type="email" placeholder="Enter email" required />
+        <label for="password">Password</label>
+        <input id="password" type="password" placeholder="Enter password" required />
+        <button type="submit">Login</button>
+      </form>
+      <div class="demo">
+        <strong>Demo accounts</strong>
+        <p>Customer: asha@campus.edu / customer123</p>
+        <p>Restaurant: mealhub@campus.edu / resto123</p>
+        <button type="button" class="secondary" id="customerDemo">Use Customer Login</button>
+        <button type="button" class="secondary" id="restaurantDemo">Use Restaurant Login</button>
+      </div>
+    </section>
+
+    <section id="cataloguePanel" hidden>
+      <div class="account-bar">
+        <span id="welcome"></span>
+        <button type="button" class="secondary" id="logoutBtn">Logout</button>
+      </div>
+      <h2>Available Menu</h2>
+      <div id="list" aria-live="polite">Loading…</div>
+      <form id="addForm" hidden>
+        <h3>Add a dish</h3>
+        <label for="name">Dish name</label>
+        <input id="name" placeholder="Dish name" required maxlength="80" />
+        <label for="price">Price (rupees)</label>
+        <input id="price" type="number" placeholder="Price (rupees)" min="0" step="0.01" required />
+        <button type="submit">Add dish</button>
+      </form>
+    </section>
+    <p id="message" class="message" role="status" aria-live="polite"></p>
+  </main>
+
+  <script>
+    let authToken = sessionStorage.getItem('campuseatsToken') || '';
+    let currentUser = JSON.parse(sessionStorage.getItem('campuseatsUser') || 'null');
+    const loginPanel = document.getElementById('loginPanel');
+    const cataloguePanel = document.getElementById('cataloguePanel');
+    const message = document.getElementById('message');
+
+    function showMessage(text, isError = false) {
+      message.textContent = text;
+      message.className = isError ? 'message error' : 'message success';
+    }
+
+    async function api(path, options = {}) {
+      const headers = { ...(options.headers || {}) };
+      if (authToken) headers.Authorization = `Bearer ${authToken}`;
+      if (options.body) headers['Content-Type'] = 'application/json';
+      const response = await fetch(path, { ...options, headers });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const error = new Error(data.error || `Request failed (${response.status})`);
+        error.status = response.status;
+        throw error;
+      }
+      return data;
+    }
+
+    function setLoggedIn(user, token) {
+      currentUser = user;
+      authToken = token;
+      sessionStorage.setItem('campuseatsToken', token);
+      sessionStorage.setItem('campuseatsUser', JSON.stringify(user));
+      loginPanel.hidden = true;
+      cataloguePanel.hidden = false;
+      document.getElementById('welcome').textContent = `Logged in: ${user.email} (${user.role})`;
+      document.getElementById('addForm').hidden = user.role !== 'restaurant' && user.role !== 'admin';
+      loadMenu();
+    }
+
+    function logout() {
+      authToken = '';
+      currentUser = null;
+      sessionStorage.removeItem('campuseatsToken');
+      sessionStorage.removeItem('campuseatsUser');
+      loginPanel.hidden = false;
+      cataloguePanel.hidden = true;
+      document.getElementById('list').textContent = '';
+      document.getElementById('loginForm').reset();
+      showMessage('You have been logged out.');
+    }
+
+    async function login(email, password) {
+      try {
+        const data = await api('/login', {
+          method: 'POST',
+          body: JSON.stringify({ email, password })
+        });
+        setLoggedIn(data.user, data.token);
+        showMessage('Login successful. Your secure menu is ready.');
+      } catch (error) {
+        showMessage(error.message, true);
+      }
+    }
+
+    async function loadMenu() {
+      const list = document.getElementById('list');
+      list.textContent = 'Loading menu…';
+      try {
+        const data = await api('/items');
+        list.replaceChildren();
+        if (!data.items || data.items.length === 0) {
+          list.textContent = 'No dishes available yet.';
+          return;
+        }
+        data.items.forEach((item) => {
+          const row = document.createElement('div');
+          row.className = 'dish';
+          const name = document.createElement('span');
+          name.className = 'name';
+          name.textContent = item.name;
+          const price = document.createElement('span');
+          price.className = 'price';
+          price.textContent = `₹${Number(item.price).toFixed(2)}`;
+          row.append(name, price);
+          list.append(row);
+        });
+      } catch (error) {
+        list.textContent = error.message;
+        if (error.status === 401) logout();
+        showMessage(error.message, true);
+      }
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', (event) => {
+      event.preventDefault();
+      login(document.getElementById('email').value.trim(), document.getElementById('password').value);
+    });
+
+    document.getElementById('customerDemo').addEventListener('click', () => {
+      document.getElementById('email').value = 'asha@campus.edu';
+      document.getElementById('password').value = 'customer123';
+    });
+    document.getElementById('restaurantDemo').addEventListener('click', () => {
+      document.getElementById('email').value = 'mealhub@campus.edu';
+      document.getElementById('password').value = 'resto123';
+    });
+    document.getElementById('logoutBtn').addEventListener('click', logout);
+
+    document.getElementById('addForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const name = document.getElementById('name').value.trim();
+      const price = document.getElementById('price').value;
+      try {
+        const data = await api('/items', {
+          method: 'POST',
+          body: JSON.stringify({ name, price })
+        });
+        event.target.reset();
+        showMessage(`${data.item.name} added successfully.`);
+        await loadMenu();
+      } catch (error) {
+        showMessage(error.message, true);
+      }
+    });
+
+    if (authToken && currentUser) {
+      setLoggedIn(currentUser, authToken);
+    }
+  </script>
+</body>
+</html>

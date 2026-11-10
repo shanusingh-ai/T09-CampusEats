@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # CampusEats — Secured Catalogue API + Frontend
 
 CS543 Web Services practical project demonstrating bcrypt password hashing, JWT authentication, role-based authorization, and a responsive browser frontend.
@@ -78,3 +79,7 @@ CampusEats_API_Security_Assignment/
 - Demo users and menu items are held in memory. They reset when the server restarts; this is suitable for the tutorial demonstration, not production storage.
 - Set a strong random `JWT_SECRET` in `.env` before deployment. Never commit `.env` or expose production secrets.
 - Use HTTPS in production. This local classroom demo runs over HTTP on localhost.
+=======
+# T09-CampusEats
+CampusEats is a secure food catalogue web application developed using Node.js, Express.js, HTML, CSS and JavaScript. It implements JWT Authentication, Bcrypt Password Hashing and Role-Based Authorization for Customer and Restaurant users.
+>>>>>>> c432a6b9a0a7af2c277b63aa3a6a64ed478bc0bb
